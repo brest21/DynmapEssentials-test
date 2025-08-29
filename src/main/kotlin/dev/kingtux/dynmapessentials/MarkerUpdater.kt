@@ -9,6 +9,7 @@ import org.bukkit.Location
 import org.bukkit.configuration.file.FileConfiguration
 import org.dynmap.DynmapAPI
 import org.dynmap.markers.MarkerAPI
+
 data class MarkerConfig(
     val showHomes: Boolean,
     val showWarps: Boolean,
@@ -16,7 +17,7 @@ data class MarkerConfig(
     val homeFormat: String,
     val homeMarker: String,
     val warpMarker: String
-){
+) {
     constructor(config: FileConfiguration) : this(
         config.getBoolean("show-homes"),
         config.getBoolean("show-warps"),
@@ -26,6 +27,7 @@ data class MarkerConfig(
         config.getString("warp.marker", "pin")!!,
     )
 }
+
 class MarkerUpdater(
     private var essentials: Essentials,
     private var dynmapAPI: DynmapAPI,
@@ -50,10 +52,10 @@ class MarkerUpdater(
         if (markerSet == null) {
             markerSet = markerAPI.createMarkerSet("Essentials_Warps_V1_3", "Warps", null, false)
         }
+
         for (s in essentialsWarps.list) {
-            var location: Location
-            try {
-                location = essentialsWarps.getWarp(s)
+            val location: Location = try {
+                essentialsWarps.getWarp(s)
             } catch (e: WarpNotFoundException) {
                 plugin.logger.warning("WarpNotFound but is in list. ${e.message}")
                 continue
@@ -61,15 +63,14 @@ class MarkerUpdater(
                 plugin.logger.warning("Invalid World: ${e.message}")
                 continue
             }
+
             val markerId = "${s}_warp"
-            if (markerSet.findMarker(markerId) != null) {
-                //Update the Location
-                markerSet.findMarker(markerId).let {
-                    it.setLocation(location.world!!.name, location.x, location.y, location.z)
-                    it.markerIcon = icon
-                }
+            val marker = markerSet.findMarker(markerId)
+            if (marker != null) {
+                marker.setLocation(location.world!!.name, location.x, location.y, location.z)
+                marker.markerIcon = icon
             } else {
-                 markerSet.createMarker(
+                markerSet.createMarker(
                     markerId,
                     s,
                     location.world!!.name,
@@ -89,33 +90,39 @@ class MarkerUpdater(
         if (markerSet == null) {
             markerSet = markerAPI.createMarkerSet("Essentials_Homes_V1_3", "Homes", null, false)
         }
+
         for (uuid in essentials.userMap.allUniqueUsers) {
             val user = essentials.getUser(uuid) ?: continue
             val offlinePlayer = Bukkit.getOfflinePlayer(uuid)
             if (!offlinePlayer.isOnline && !config.showOffline) continue
+
             val homes = user.homes
             for (home in homes) {
                 val homeId = "${offlinePlayer.uniqueId}_$home"
                 val homeName = config.homeFormat
                     .replace("{name}", offlinePlayer.name!!).replace("{home}", home)
-                val location = runCatching { user.getHome(home) }.getOrNull();
+                val location = runCatching { user.getHome(home) }.getOrNull()
                 if (location == null) {
                     plugin.logger.warning("Home not found but is in list. ${user.name} $home")
                     continue
                 }
-                if (markerSet.findMarker(homeId) != null) {
-                    //Update the Location
-                    markerSet.findMarker(homeId).let {
-                        it.setLocation(location.world!!.name, location.x, location.y, location.z)
-                        it.markerIcon = markerAPI.getMarkerIcon(config.homeMarker)
-                    }
+
+                val marker = markerSet.findMarker(homeId)
+                if (marker != null) {
+                    marker.setLocation(location.world!!.name, location.x, location.y, location.z)
+                    marker.markerIcon = markerAPI.getMarkerIcon(config.homeMarker)
                 } else {
                     markerSet.createMarker(
-                        homeId, homeName, location.world!!
-                            .name, location.x, location.y, location.z, icon, false
+                        homeId,
+                        homeName,
+                        location.world!!.name,
+                        location.x,
+                        location.y,
+                        location.z,
+                        icon,
+                        false
                     )
                 }
-
             }
         }
     }
